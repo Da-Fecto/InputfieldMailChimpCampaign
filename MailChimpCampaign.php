@@ -286,39 +286,31 @@ class MailChimpCampaign extends WireData {
 		$name = $this->get('name');
 		$value = $this->get('value');
 
-		$out = "<h2 class='mailchimp'>" . $this->_('This is the first step for creating a campaign in MailChimp.') . "</h2>".
+		$out = "<h2 class='mailchimp'>" . $this->_('This is the first step for creating a campaign in MailChimp.') . "</h2>\n".
 		"<p>" . $this->_('All fields below are required by mailchimp to create a campaign. After the campaign is created, we receive the Campaign ID and we store it in our field.').
-		" " . $this->_('The campaign ID is the only field you can\'t update afterwards.') . "</p>";
+		" " . $this->_('The campaign ID is the only field you can\'t update afterwards.') . "</p>\n";
 
 		// Columns output
 		$out .= "<div class='mailchimp-row mailchimp cf'>\n".
 		"		<div class='mailchimp-column'>\n".
-		"			<div class='mailchimp-padding'>";
-		
-		// Name Your Campaign
+		"			<div class='mailchimp-padding'>\n";
+		// Name Your Campaign & From name
 		$title = empty($value->campaign_title) ? $this->campaign_title : $value->campaign_title;
 		$out .= $this->markupInput('campaign_title', $title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal."));
-		// From name
 		$out .= $this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)"));
-
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"		<div class='mailchimp-column'>\n".
 		"			<div class='mailchimp-padding'>\n";
-
-		// Mailing list
+		// Mailing list Reply-To Email Address
 		$out .=	count($this->lists()) ? $this->markupSelect($this->lists()) : '';
-		// Reply-To Email Address
 		$out .= $this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message."));
-
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"		<div class='mailchimp-column'>\n".
 		"			<div class='mailchimp-padding'>\n";
-	
 		// Email Subject
 		$out .= $this->markupInput('subject', $value->subject, $this->_("Email Subject"),  $this->_("The subject line for your campaign message"));
-	
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"	</div>\n".
@@ -330,7 +322,7 @@ class MailChimpCampaign extends WireData {
 	}
 
 	/**
-	 * This methode markupInputfield outputs the markup for the inputfield
+	 * This methode markupInputfield outputs the markup for the campaign inputfield
 	 *
 	 */
 
@@ -343,31 +335,25 @@ class MailChimpCampaign extends WireData {
 		// Columns output
 		$out .= "<div class='mailchimp-row mailchimp cf'>\n".
 		"		<div class='mailchimp-column'>\n".
-		"			<div class='mailchimp-padding'>";
-		
+		"			<div class='mailchimp-padding'>\n";
 		// Name Your Campaign &	From name
 		$title = empty($value->campaign_title) ? $this->campaign_title : $value->campaign_title;
 		$out .= $this->markupInput('campaign_title', $title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal."));
 		$out .= $this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)"));
-
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"		<div class='mailchimp-column'>\n".
 		"			<div class='mailchimp-padding'>\n";
-
 		// Mailing list & Reply-To Email Address
 		$out .=	count($this->lists()) ? $this->markupSelect($this->lists()) : '';
 		$out .= $this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message."));
-
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"		<div class='mailchimp-column'>\n".
 		"			<div class='mailchimp-padding'>\n";
-	
 		// Email Subject & Campaign id
 		$out .= $this->markupInput('subject', $value->subject, $this->_("Email Subject"),  $this->_("The subject line for your campaign message"));
 		$out .= $this-> markupInput('id', $value->id, $this->_("Campaign id"), $this->_("Can't be changed."), $enabled=false);
-	
 		$out .=	"	</div>\n".
 		"		</div>\n".
 		"	</div>\n".
@@ -400,9 +386,7 @@ class MailChimpCampaign extends WireData {
 		"	<div class='ui-widget-content'>\n".
 		"		<p class='description'>{$fieldDescription}</p>\n".
 		"		<input type='{$type}' id='mailchimp-{$fieldName}'";
-
 		$out .=	$enabled === true ? " name='{$fieldName}' " : " disabled='disabled' ";
-
 		$out .= 	"value='{$fieldValue}' />\n".
 		"		<br />\n".
 		"		<span class='detail'>\$page->{$name}->{$fieldName}</span>\n".
@@ -413,8 +397,7 @@ class MailChimpCampaign extends WireData {
 	}
 
 	/**
-	 * markupSelect takes an array create by the methode lists(). And outputs a html form
-	 * select field
+	 * markupSelect takes an array create by the methode lists(). Outputs a select field
 	 *
 	 */
 
@@ -431,14 +414,12 @@ class MailChimpCampaign extends WireData {
 		"	<div class='ui-widget-content'>\n".
 		"		<p class='description'>{$this->_('The list to send this campaign to.')}</p>\n".
 		"		<select id='mailchimp-list_id' name='list'>\n";
-		
 		$out .= "<option value='' disabled='disabled'>\n". $this->_('Please select a list...') . "</option>";		
-
+		// loop the array 
 		foreach($array as $option) {
 			$selected = $value->list == $option['id'] ? ' selected="selected" ' : '';			
 			$out .= "<option value='{$option['id']}'{$selected}>{$option['name']}</option>";
 		}
-
 		$out .= "		</select>\n".
 		"		<br />\n".
 		"		<span class='detail'>\$page->{$name}->list</span>\n".
