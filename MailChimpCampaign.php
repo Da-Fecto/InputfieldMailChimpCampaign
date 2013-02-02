@@ -26,9 +26,7 @@ class MailChimpCampaign extends WireData {
 	 * Construct the class
 	 *
 	 * - Include the MailChimp API class
-	 * - Provide a title for the campaign ($this->campaign_title). MailChimp use this 
-	 *   title internally.
-	 * - Give the monkey an URL where he can find the news letter
+	 * - Provide some information from the "front" Page
 	 *
 	 */
 
