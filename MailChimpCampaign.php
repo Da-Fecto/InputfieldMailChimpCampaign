@@ -295,7 +295,7 @@ class MailChimpCampaign extends WireData {
 		$name = $this->get('name');
 		$value = $this->get('value');
 
-		$out .= "<h2 class='mailchimp'>" . $this->_('This is the first step for creating a campaign in MailChimp.') . "</h2>".
+		$out = "<h2 class='mailchimp'>" . $this->_('This is the first step for creating a campaign in MailChimp.') . "</h2>".
 		"<p>" . $this->_('All fields below are required by mailchimp to create a campaign. After the campaign is created, we receive the Campaign ID and we store it in our field.').
 		" " . $this->_('The campaign ID is the only field you can\'t update afterwards.') . "</p>";
 
