@@ -125,16 +125,14 @@ class MailChimpCampaign extends WireData {
 			$this->message($this->_("The chimp can't find bananas here. Please Publish the page."));
 		}
 
-		// Set the status to prepare
+		// return the prepare markup
 		return $this->markupPrepare();
 	}
 
 	/**
 	 * The API key is checked and is valid. We now ask the chimp to create a campaign for
-	 * us & give a campaign id back. This id wil only saved one time. Later on the
-	 * campaign id wil not get updated again. ( update methode )
-	 *
-	 * Next we need to tell the chimp only ones where he can find the campaign.
+	 * us & give a campaign id back. This id wil stay the same. It's the link with the
+	 * campaign on MailChimp
 	 *
 	 */
 
@@ -195,10 +193,7 @@ class MailChimpCampaign extends WireData {
 	}
 
 	/**
-	 * Only $value->id & $value->list are stored within the ProcessWire database
-	 *
-	 * @var string $value->id The campaign id
-	 * @var string $value->list The campaign list for sending
+	 * Update
 	 *
 	 */
 
@@ -216,7 +211,6 @@ class MailChimpCampaign extends WireData {
 		// The state of the checkbox is always unchecked, unless you check the box or 
 		// when the fields are changed. Then jQuery will check the box. 
 		if ($value->update_settings == false ) return $this->markupCampaign();
-
 
 		// wake-up the monkey
 		$api = new MCAPI($this->apiKey);
@@ -253,7 +247,6 @@ class MailChimpCampaign extends WireData {
 		$out = $this->markupCampaign();
 		return $out;
 	}
-
 
 	/**
 	 * Method to find all mailing lists. Returns an array with all lists
