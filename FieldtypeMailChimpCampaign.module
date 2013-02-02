@@ -1,0 +1,141 @@
+<?php
+
+/**
+ * MailChimpCampaign Fieldtype
+ *
+ * This Fieldtype stores values for creating & updating a MailChimp campaign.
+ *
+ * Copyright (C) 2013 by Martijn Geerts
+ * Web: http://www.agrio.nl
+ *
+ * Special Thanks to: Ryan & Soma. This Fieldtype & Inputfield borrows a lot of cleverness
+ * written in the MapMarker and Soma's slider.
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2013 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ *
+ */
+
+class FieldtypeMailChimpCampaign extends Fieldtype {
+
+	public static function getModuleInfo() {
+		return array(
+
+			'title' => __('MailChimp Campaign', __FILE__), // Module Title
+			'version' => 001,
+			'author' => 'Martijn Geerts',
+			'summary' => __('Field that creates or updates a MailChimp email campaign.', __FILE__),
+			'requires' => 'InputfieldMailChimpCampaign', // could be array
+			);
+	}
+
+
+	// Return the Inputfield required by this Fieldtype
+	public function getInputfield(Page $page, Field $field) {
+		$inputfield = $this->modules->get('InputfieldMailChimpCampaign');
+		return $inputfield;
+	}
+
+	/**
+	 * Return all compatible Fieldtypes
+	 *
+	 */
+
+	public function ___getCompatibleFieldtypes(Field $field) {
+		// there are no other fieldtypes compatible with this one
+		return null;
+	}
+
+
+	// blank value is an wiredata object MailChimpCampaign
+	public function getBlankValue(Page $page, Field $field) {
+		require_once(dirname(__FILE__) . '/MailChimpCampaign.php');
+		return new MailChimpCampaign();
+	}
+
+	/**
+	 * Sanitize value for runtime
+	 *
+	 */
+
+	public function sanitizeValue(Page $page, Field $field, $value) {
+		if(!$value instanceof MailChimpCampaign) {
+			$value = $this->getBlankValue($page, $field);
+		}
+
+		// report any changes to the field values
+		if($value->isChanged('id')) $page->trackChange($field->name);
+		return $value;
+	}
+
+	// reestablish any database connections that may have been lost ?????
+	public function ___wakeupValue(Page $page, Field $field, $value) {
+
+		// get blank MailChimpCampaign instance
+		$data = $this->getBlankValue($page, $field);
+
+		$data->id = $value['data'];
+		$data->list = $value['list'];
+		$data->campaign_title = $value['campaign_title'];
+		$data->subject = $value['subject'];
+		$data->from_name = $value['from_name'];
+		$data->from_email = $value['from_email'];
+		$data->update_settings = $value['update_settings'];
+		$data->setTrackChanges(true);
+
+		return $data;
+	}
+
+	/**
+	 * Given an 'awake' value, as set by wakeupValue, convert the value back to a basic
+	 * type for storage in DB.
+	 *
+	 */
+
+	public function ___sleepValue(Page $page, Field $field, $value) {
+
+		// throw error if value is not of the right type
+		if(!$value instanceof MailChimpCampaign) {
+			throw new WireException("Expecting an instance of MailChimpCampaign");
+		}
+
+		$sleepValue = array(
+			'data' => $value->id,
+			'list' => $value->list,
+			'campaign_title' => $value->campaign_title,
+			'subject' => $value->subject,
+			'from_name' => $value->from_name,
+			'from_email' => $value->from_email,
+			'update_settings' => $value->update_settings,
+			);
+
+		return $sleepValue;
+	}
+
+	/**
+	 * Return the database schema in specified format. When set, these rows wil be created
+	 * in the DB table.
+	 *
+	 */
+
+	public function getDatabaseSchema(Field $field) {
+
+		// get the default schema
+		$schema = parent::getDatabaseSchema($field);
+
+		$schema['data'] = "VARCHAR(128) NOT NULL DEFAULT ''"; // id
+		$schema['list'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['campaign_title'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['subject'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['from_name'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['from_email'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['update_settings'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+
+		return $schema;
+	}
+
+
+}

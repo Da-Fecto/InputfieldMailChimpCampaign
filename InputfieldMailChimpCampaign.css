@@ -1,0 +1,51 @@
+h2.mailchimp {
+	margin: 0;
+}
+
+.mailchimp .ui-widget {
+	margin-top: 1em;
+}
+
+.mailchimp .ui-widget-content {
+	padding: 1em;
+}
+
+.mailchimp .ui-widget-content .description {
+	margin-top: 0;
+}
+
+.mailchimp-row { margin: 0 -0.5em; }
+
+.mailchimp-column {
+	width: 33.333333%;
+	float: left;
+	min-height: 1px;
+}
+
+.mailchimp-padding {
+	position: relative;
+	margin-top: -1em;
+	padding: 0 .5em;
+}
+
+
+/* */
+
+.mailchimp input {
+	float: left;
+}
+
+.mailchimp input[type="text"] {
+	width: 99%;
+}
+
+/* helpers */
+
+.cf:before, .cf:after {
+    content: " ";
+    display: table;
+}
+
+.cf:after { clear: both; }
+
+.cf { *zoom: 1; }

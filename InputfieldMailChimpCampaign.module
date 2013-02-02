@@ -1,0 +1,185 @@
+<?php
+
+/**
+ * ProcessWire Map Marker Inputfield
+ *
+ * Inputfield for creating & updating a MailChimp campaign.
+ *
+ * Copyright (C) 2013 by Martijn Geerts
+ * Web: http://www.agrio.nl
+ *
+ * Special Thanks to: Ryan & Soma. This Fieldtype & Inputfield borrows a lot of cleverness
+ * written in the MapMarker and Soma's slider.
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2013 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ *
+ */
+
+class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModule {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => __('MailChimp Campaign', __FILE__), // Module Title
+			'version' => 001,
+			'author' => 'Martijn Geerts',
+			'summary' => __('Inputfield(s) & data interface for creating & updating a MailChimp email campaign.', __FILE__),
+			'installs' => array('FieldtypeMailChimpCampaign'),
+			);
+	}
+
+	protected static $defaultSettings = array(
+		'apiKey' => null,
+		);
+
+	public function __construct() {
+		require_once(dirname(__FILE__) . '/MCAPI.class.php');
+		require_once(dirname(__FILE__) . '/MailChimpCampaign.php');
+		parent::__construct();
+	}
+
+	/**
+	 * Initialize parent Inputfield
+	 *
+	 */
+
+	public function init() {
+		return parent::init();
+	}
+
+	public function setAttribute($key, $value) {
+		if($key == 'value' && !$value instanceof MailChimpCampaign && !is_null($value)) {
+			throw new WireException("This input only accepts a MailChimpCampaign for it's value");
+		}
+		return parent::setAttribute($key, $value);
+	}
+
+	public function ___render() {
+
+		/**
+		 * Check for an MailChimp API key
+		 *
+		 */
+
+		// reference the MailChimpCampaign class
+		$campaign = new MailChimpCampaign();
+
+		if(empty($this->apiKey)) {
+			// show them rotten bananas
+		 	$out = $campaign->errorMessage();
+		 	// custom error number 1000, no api key
+		 	$campaign->chimpsError('1000');
+		 	return $out;
+		}
+
+		/**
+		 * Jay, we have a API key, but we don't know for sure if it's valid. Note we don't
+		 * want an extra ping on every request, ping only if the campaign id is empty.
+		 *
+		 */
+
+		// reference the this field
+		$name = $this->attr('name');
+		$value = $this->attr('value');
+
+		// Set the provided API key. Beware, we still don't know if it's valid!
+		$campaign->set('apiKey', $this->apiKey);
+		$campaign->set('name', $name); // Name of the entire field
+		$campaign->set('value', $value); // All values of the field.
+
+
+		// check if we have info needed before we can create a campain
+		if( empty($value->list)) { // can't be empty if campaign is saved.
+			
+			// reference the MailChimp API
+		    $api = new MCAPI($this->apiKey);
+			// if the respond is false
+			if(!$api->ping()) {
+				// show them rotten bananas
+				$out = $campaign->errorMessage();
+				// custom error number 1001, invalid api key
+				$campaign->chimpsError('1001');
+				return $out;
+			}
+			// looks like we we didn't asked the monkey to create a campaign for us, or
+			// somehow we lost the campaign id. Let's gonna create a new campaign.
+			$out = $campaign->prepare();
+		 	return $out;
+		}
+
+		// check for an ID ( campain id, originated from MailChimp )
+		if(empty($value->id)) {
+			// reference the MailChimp API
+		    $api = new MCAPI($this->apiKey);
+			// if the respond is false
+			if(!$api->ping()) {
+				// show them rotten bananas
+				$out = $campaign->errorMessage();
+				// custom error number 1001, invalid api key
+				$campaign->chimpsError('1001');
+				return $out;
+			}
+			// looks like we we didn't asked the monkey to create a campaign for us, or
+			// somehow we lost the campaign id. Let's gonna create a new campaign.
+			$out = $campaign->create();
+		 	return $out;
+		}
+
+		/**
+		 * We have a API key and a campaign id. We gonna try to see if everything is fine.
+		 * Both the key & campaign id can still be false. Let's try to update.
+		 *
+		 */
+
+		$out = $campaign->update();
+		return $out;
+	}
+
+
+	// setting values from input
+	public function ___processInput(WireInputData $input) {
+
+		$name = $this->attr('name');
+		$value = $this->attr('value');
+
+		$value->set('id', $input[$name]);
+		$value->set('list', $input["list"]);
+		$value->set('subject', $input["subject"]);
+		$value->set('campaign_title', $input["campaign_title"]);
+		$value->set('from_name', $input["from_name"]);
+		$value->set('from_email', $input["from_email"]);
+		$value->set('update_settings', $input["update_settings"]);
+
+		$this->trackChange('value');
+		return $this;
+	}
+
+	static public function getModuleConfigInputfields(array $data) {
+
+		$inputfields = new InputfieldWrapper();
+		$modules = wire('modules');
+		
+		// pupulate the data with default settings. 
+		foreach(self::$defaultSettings as $key => $value) {
+			if(!isset($data[$key])) $data[$key] = $value;
+		}
+
+		$field = $modules->get('InputfieldText');
+		$field->attr('name', 'apiKey');
+		$field->attr('value', $data['apiKey']);
+		$field->label = 'MailChimp API Key';
+		$field->description = __("Grab your MailChimp API Key at MailChimp and you're good to go.");
+		$link = "[MailChimp API Key](http://kb.mailchimp.com/article/where-can-i-find-my-api-key)";
+		$field->notes = sprintf(__("Find your %s here."),$link);
+
+		$inputfields->append($field);
+
+		return $inputfields;
+
+	}
+
+}
+
