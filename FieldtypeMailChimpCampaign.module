@@ -36,11 +36,14 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 	// Return the Inputfield required by this Fieldtype
 	public function getInputfield(Page $page, Field $field) {
 		$inputfield = $this->modules->get('InputfieldMailChimpCampaign');
+		$inputfield->set('frontpage', $page);
 		return $inputfield;
 	}
 
 	/**
 	 * Return all compatible Fieldtypes
+	 *
+	 *
 	 *
 	 */
 
@@ -84,6 +87,9 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 		$data->from_name = $value['from_name'];
 		$data->from_email = $value['from_email'];
 		$data->update_settings = $value['update_settings'];
+		$data->opens = $value['opens'];
+		$data->html_clicks = $value['html_clicks'];
+		$data->text_clicks = $value['text_clicks'];
 		$data->setTrackChanges(true);
 
 		return $data;
@@ -110,6 +116,9 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 			'from_name' => $value->from_name,
 			'from_email' => $value->from_email,
 			'update_settings' => $value->update_settings,
+			'opens' => $value->opens,
+			'html_clicks' => $value->html_clicks,
+			'text_clicks' => $value->text_clicks,
 			);
 
 		return $sleepValue;
@@ -121,18 +130,26 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 	 *
 	 */
 
+//			'opens'
+//			'html_clicks'
+//			'text_clicks'
+
+
 	public function getDatabaseSchema(Field $field) {
 
 		// get the default schema
 		$schema = parent::getDatabaseSchema($field);
 
-		$schema['data'] = "VARCHAR(128) NOT NULL DEFAULT ''"; // id
-		$schema['list'] = "VARCHAR(128) NOT NULL DEFAULT ''";
-		$schema['campaign_title'] = "VARCHAR(128) NOT NULL DEFAULT ''";
-		$schema['subject'] = "VARCHAR(128) NOT NULL DEFAULT ''";
-		$schema['from_name'] = "VARCHAR(128) NOT NULL DEFAULT ''";
-		$schema['from_email'] = "VARCHAR(128) NOT NULL DEFAULT ''";
-		$schema['update_settings'] = "VARCHAR(128) NOT NULL DEFAULT ''";
+		$schema['data'] = "varchar(32) NOT NULL default ''"; // id
+		$schema['list'] = "varchar(32) NOT NULL default ''";
+		$schema['campaign_title'] = "varchar(255) NOT NULL default ''";
+		$schema['subject'] = "varchar(255) NOT NULL default ''";
+		$schema['from_name'] = "varchar(255) NOT NULL default ''";
+		$schema['from_email'] = "varchar(255) NOT NULL default ''";
+		$schema['update_settings'] = "tinyint(1) NOT NULL default '0'";
+		$schema['opens'] = "tinyint(1) NOT NULL default '0'";
+		$schema['html_clicks'] = "tinyint(1) NOT NULL default '0'";
+		$schema['text_clicks'] = "tinyint(1) NOT NULL default '0'";
 
 		return $schema;
 	}

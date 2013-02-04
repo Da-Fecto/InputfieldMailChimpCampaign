@@ -87,6 +87,7 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 
 		// Set the provided API key. Beware, we still don't know if it's valid!
 		$campaign->set('apiKey', $this->apiKey);
+		$campaign->set('frontpage', $this->frontpage);
 		$campaign->set('name', $name); // Name of the entire field
 		$campaign->set('value', $value); // All values of the field.
 
@@ -138,7 +139,6 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		return $out;
 	}
 
-
 	// setting values from input
 	public function ___processInput(WireInputData $input) {
 
@@ -152,6 +152,9 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		$value->set('from_name', $input["from_name"]);
 		$value->set('from_email', $input["from_email"]);
 		$value->set('update_settings', $input["update_settings"]);
+		$value->set('opens', $input["opens"]);
+		$value->set('html_clicks', $input["html_clicks"]);
+		$value->set('text_clicks', $input["text_clicks"]);
 
 		$this->trackChange('value');
 		return $this;
@@ -180,6 +183,4 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		return $inputfields;
 
 	}
-
 }
-
