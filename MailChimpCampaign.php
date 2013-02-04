@@ -108,7 +108,7 @@ class MailChimpCampaign extends WireData {
 	 * Prepare is a method that collects data needed to create a MailChimp campaign.
 	 * We need at least a list_id, subject, from_name and a from_email.
 	 *
-	 * contain logic
+	 * contains logic
 	 */
 	public function prepare() {
 
@@ -126,7 +126,7 @@ class MailChimpCampaign extends WireData {
 	 * us & give a campaign id back. This id wil stay the same. It's the link with the
 	 * campaign on MailChimp
 	 *
-	 * contain logic
+	 * containslogic
 	 */
 	public function create() {
 
