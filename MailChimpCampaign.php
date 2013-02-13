@@ -1,5 +1,8 @@
 <?php
 
+// make sure all errors get reported regardless of what ini-files might contain
+error_reporting(E_ALL | E_STRICT);
+
  /**
  * MailChimpCampaign class
  *
@@ -23,12 +26,19 @@
 class MailChimpCampaign extends WireData {
 
 	/**
+	 * set status of the page
+	 *
+	 */
+	public $ChimpStatus = null;
+
+	/**
 	 * Construct the class
 	 *
 	 */
 	public function __construct() {
 		// include a path to the MailChimp API class
 		require_once(dirname(__FILE__) . '/MCAPI.class.php');
+		$this->set('status', null);
 	}
 
 	/**
@@ -111,13 +121,12 @@ class MailChimpCampaign extends WireData {
 	 * contains logic
 	 */
 	public function prepare() {
-
 		// if the page is not published, no need contact the chimp.
 		if($this->statusUnpublished()) {
-			$this->message($this->_("The chimp can't find bananas here. Please Publish the page."));
+			$this->message($this->_("The chimp can't find bananas here. Please publish the page."));
 		}
-
 		// return the prepare markup
+		$this->ChimpStatus = 'prepare';
 		return $this->markupPrepare();
 	}
 
@@ -147,12 +156,11 @@ class MailChimpCampaign extends WireData {
 		 * Basic variable required by mailchimp
 		 *
 		 */
-
 		$type = 'regular';
 
-		$opens = $value->opens == 1 ? true : false;
-		$html_clicks = $value->html_clicks == 1 ? true : false;
-		$text_clicks = $value->text_clicks == 1 ? true : false;
+		$opens = $value->opens == 1 ? 1 : null;
+		$html_clicks = $value->html_clicks == 1 ? 1 : null;
+		$text_clicks = $value->text_clicks == 1 ? 1 : null;
 
 		$opts['tracking'] = array(
 			'opens' => $opens,
@@ -165,10 +173,10 @@ class MailChimpCampaign extends WireData {
 		$opts['subject'] = $value->subject;
 		$opts['from_email'] = $value->from_email;
 		$opts['from_name'] =  $value->from_name;
+		$opts['generate_text'] =  1;
 
 		$content = array(
 			'url'=> $this->frontpage->httpUrl,
-			'text' => '*|UNSUB|*',
 			);
 
 		// tracking ( note: fake bools)
@@ -181,8 +189,6 @@ class MailChimpCampaign extends WireData {
 			'html_clicks' => $html_clicks,
 			'text_clicks' => $text_clicks
 			);
-
-		$api->campaignUpdate( $value->id, 'tracking', $options);
 
 		$campaign_id = $api->campaignCreate($type, $opts, $content);
 
@@ -211,15 +217,20 @@ class MailChimpCampaign extends WireData {
 		// if the page is not published, no need contact the chimp.
 		if($this->statusUnpublished()) {
 			$this->message($this->_("The chimp can't find bananas here. Please Publish the page."));
+			$this->ChimpStatus = 'campaign-offline';
 			return $this->markupCampaign();
 		}
 
 		// provide easy access
 		$value = $this->get('value');
+		$name = $this->get('name');
 
 		// The state of the checkbox is always unchecked, unless you check the box or
 		// when the fields are changed. Then jQuery will check the box.
-		if ($value->update_settings == false ) return $this->markupCampaign();
+		if ($value->update_settings == false ) {
+			$this->ChimpStatus = 'campaign-saved';
+			return $this->markupCampaign();
+		}
 
 		// wake-up the monkey
 		$api = new MCAPI($this->apiKey);
@@ -230,6 +241,7 @@ class MailChimpCampaign extends WireData {
 		$api->campaignUpdate( $value->id, 'from_email', $value->from_email);
 		$api->campaignUpdate( $value->id, 'from_name', $value->from_name);
 		$api->campaignUpdate( $value->id, 'list_id', $value->list);
+		$api->campaignUpdate( $value->id, 'generate_text', 1);
 
 		// content
 		$options = array(
@@ -249,31 +261,26 @@ class MailChimpCampaign extends WireData {
 			'text_clicks' => $text_clicks
 			);
 
-		$update = $api->campaignUpdate( $value->id, 'tracking', $options);
+		$update = $api->campaignUpdate($value->id, 'tracking', $options);
 
 		// Oops, something is wrong. Let the monkey speak to us.
 		if ($api->errorCode) {
-			// show them bananas
-			//$out = $this->errorMessage();
-
-			echo $api->errorCode;
+			// set status & show form
+			$this->ChimpStatus = 'campaign-not-found';
 			$out = $this->markupCampaign();
-
-			// and let the monkey speak to us.
-			$this->chimpsError($api->errorCode, $api->errorMessage);
+			// Let the monkey tell us what is wrong.
 			if( $api->errorCode == 300 ) {
-				// empty the list (to return to the prepare state) and clean the id cause
-				// it is not available at mailchimp anymore. (campaign is deleted)
-				$out .= "<input type='hidden' name='list' value='' />\n";
+				// $out .= "<input type='hidden' name='list' value='' />\n";
 				$out .= "<input type='hidden' name='{$name}' value='' />\n";
 			}
+			$this->chimpsError($api->errorCode, $api->errorMessage);
 			return $out;
 		}
-
-
-		$this->message($this->_("The settings are updated on MailChimp."));
-
+		
+		// set status & show form
+		$this->ChimpStatus = 'campaign-updated';
 		$out = $this->markupCampaign();
+		$this->message($this->_("The settings are updated on MailChimp."));
 		return $out;
 	}
 
@@ -312,35 +319,82 @@ class MailChimpCampaign extends WireData {
 	 */
 	public function markupPrepare() {
 
-		$out = '';
+		echo $this->setOpens;
+		echo $this->setHtml_clicks;
+		echo $this->setText_clicks;
 
 		// reference the this field
 		$name = $this->get('name');
 		$value = $this->get('value');
 		
-		$out .= "<h2 class='chimp'>".$this->_('This is the first step before we ask the chimp to create a campaign for us.')."</h2>".
-		"<p>".$this->_('All fields below are required by MailChimp to create a campaign. After the campaign is created, we receive the campaign id and we\'re good to go.')." ". 
-		$this->_('The campaign ID is the only field you can\'t update afterwards.')."</p>";
+		// row 1
+		$out = "<div class='chimp-row chimp cf'>";
 
-		$out .= $this->markupCheckbox('opens', $this->_('1'));
-		$out .= $this->markupCheckbox('html_clicks', $this->_('2'));
-		$out .= $this->markupCheckbox('text_clicks', $this->_('3'));
+		if(!$this->ChimpStatus) {
+			$this->error("markupPrepare methode inside {$this->className} did not receive a ChimpStatus.");
+		}
+			
+		// campaign not found
+		if($this->ChimpStatus == 'prepare') {
+			$header = "<h2>" . $this->_("Let's setup a MailChimp campaign.") . "</h2>";
+			$content = "<p>" . $this->_('Please fill in the fields & save the page. ').
+			$this->_('If everything is chimpy,') . "<br />" .
+			$this->_('we receive a campaign id and we\'re good to go.') . "</p>";
+			$img = "<img src='" . wire('config')->urls->siteModules . "Inputfield" . $this->className . "/images/freddy.png' />";
+		}
+
+ 		// column 1 & 2
+		$out .= "<div class='chimp-column double {$this->ChimpStatus}'>".
+		"		<div class='chimp-padding'>".
+		"			<div class='ui-widget ui-widget-content chimp-detail cf'>".
+		"				<div class='image'>".
+							$img.
+		"				</div>".
+		" 				<div class='text'>".
+							$header.
+							$content.
+		"				</div>".
+		"			</div>".
+		"		</div>".
+		"	</div>";
+
+		// column 3
+		$opens = $this->_("MailChimp adds a tiny image to the mail that can get tracked.");
+		$html_clicks = $this->_("Required on free accounts, optional on paid account.");
+		$text_clicks = $this->_("Required on free accounts, optional on paid account.");
+
+		$detail = array(
+			'opens' => 		 "<span class='icon-detail'><span>every time someone opens the HTML email</span><a href='#' alt='{$opens}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			'html_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$html_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			'text_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$text_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			);
+
+		$out .= "<div class='chimp-column'>".
+		"	<div class='chimp-padding'>".
+		"		<div class='ui-widget ui-widget-content chimp-detail'>".
+		"			<label class='ui-widget-header'>" . $this->_('Tracking options') . "</label>".
+					$detail['opens'] . $this->markupCheckbox('opens', $this->_("Track Opens")).
+					$detail['html_clicks'] . $this->markupCheckbox('html_clicks', $this->_('Track Clicks, html')).
+					$detail['text_clicks'] . $this->markupCheckbox('text_clicks', $this->_('Track Clicks, plain-text')).
+		"		</div>".
+		"	</div>".
+		"</div>";
+
+		$out .= "</div>"; // .chimp-row
 
 		$title = empty($value->campaign_title) ? $this->frontpage->title : $value->campaign_title;
 
 		// Columns output
-		$out .= 
-		"<div class='chimp-row chimp cf'>".
-		$this->markupInput('campaign_title', $title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal.")).
-		$this->markupSelect($this->lists()).
-		$this->markupInput('subject', $value->subject, $this->_("Email Subject"),  $this->_("The subject line for your campaign message")).
-		$this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)")).
-		$this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message.")).
+		$out .= "<div class='chimp-row chimp cf'>".
+			$this->markupInput('campaign_title', $title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal.")).
+			$this->markupSelect($this->lists()).
+			$this->markupInput('subject', $value->subject, $this->_("Email Subject"), $this->_("The subject line for your campaign message")).
+			$this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)")).
+			$this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message.")).
 		"</div>";
 
 		$out .= "<input type='hidden' name='{$name}' value='{$value->id}' />";
-
-		$out .= "<p class='notes'>{$this->_('All fields above are required, but you can change them later if you wish.')}</p>";
+		$out .= "<p class='detail'>{$this->_('Fields above are required, but you can change them later if you wish.')}</p>";
 
 		return $out;
 	}
@@ -352,31 +406,102 @@ class MailChimpCampaign extends WireData {
 	 */
 	public function markupCampaign() {
 
-		$out = '';
-
 		// reference the this field
 		$name = $this->name;
 		$value = $this->value;
-		
-		// checkboxes
-		$out .= 
-		$this->markupCheckbox('opens', $this->_("Track Opens")).
-		$this->markupCheckbox('html_clicks', $this->_('Track Clicks')).
-		$this->markupCheckbox('text_clicks', $this->_('Track Plain-Text Clicks'));
 
-		// Columns output
-		$out .= 
-		"<div class='chimp-row chimp cf'>".
-		$this->markupInput('campaign_title', $this->frontpage->title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal.")).
-		$this->markupSelect($this->lists()).
-		$this->markupInput('subject', $value->subject, $this->_("Email Subject"),  $this->_("The subject line for your campaign message")).
-		$this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)")).
-		$this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message.")).
-		$this->markupInput('id', $value->id, $this->_("Campaign id"), $this->_("Can't be changed."), $enabled=false).
+		$out = '';
+
+		// row 1
+		$out = "<div class='chimp-row chimp cf'>";
+
+		if(!$this->ChimpStatus) {
+ 			$this->error("markupCampaign methode inside {$this->className} did not receive a ChimpStatus.");
+			$header = "<h2>" . "NO STATUS" . "</h2>";
+			$img = '';
+			$content = 'No Status';			
+		}
+		
+		// campaign offline
+		if($this->ChimpStatus == 'campaign-offline') {
+			$header = "<h2>" . $this->_("Your page is not published") . "</h2>";
+			$img = "";
+			$content = "<p>" . $this->_("You invited the chimp, but the door is closed. Please publish the page.") . "</p>";
+		}
+ 
+		// campaign saved
+		if($this->ChimpStatus == 'campaign-saved') {
+			$header = "<h2>" . $this->_("We didn't wake up the chimp") . "</h2>";
+			$img = "<img src='" . wire('config')->urls->siteModules . "Inputfield" . $this->className . "/images/freddy-saved.png' />";
+			$content = "<p>" . $this->_("Your campaign settings are saved in ProcessWire. But the settings are not updated on MailChimp.") . "</p>";
+		}
+
+		// campaign updated
+		if($this->ChimpStatus == 'campaign-updated') {
+			$header = "<h2>" . $this->_("Updated on MailChimp") . "</h2>";
+			$img = "<img src='" . wire('config')->urls->siteModules . "Inputfield" . $this->className . "/images/freddy-updated.png' />";
+			$content = "<p>" . $this->_("Your campaign is successfully updated on MailChimp.") . "</p>";
+		}
+
+		// campaign not found
+		if($this->ChimpStatus == 'campaign-not-found') {
+			$header = "<h2>" . $this->_("Bananas…") . "</h2>";
+			$img = "<img src='" . wire('config')->urls->siteModules . "Inputfield" . $this->className . "/images/bananapeel.jpg' />";
+			$content = "<p>" . $this->_("Looks like someone deleted this campaign on MailChimp. Please save the page, then we try to re-create this campaign.") . "</p>";
+		}
+
+ 		// column 1 & 2
+		$out .= "<div class='chimp-column double {$this->ChimpStatus}'>".
+		"		<div class='chimp-padding'>".
+		"			<div class='ui-widget ui-widget-content chimp-detail cf'>".
+		"				<div class='image'>".
+							$img.
+		"				</div>".
+		" 				<div class='text'>".
+							$header.
+							$content.
+		"				</div>".
+		"			</div>".
+		"		</div>".
+		"	</div>";
+
+		$opens = $this->_("MailChimp adds a tiny image to the mail that can get tracked.");
+		$html_clicks = $this->_("Required on free accounts, optional on paid account.");
+		$text_clicks = $this->_("Required on free accounts, optional on paid account.");
+
+		$detail = array(
+			'opens' => 		 "<span class='icon-detail'><span>every time someone opens the HTML email</span><a href='#' alt='{$opens}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			'html_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$html_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			'text_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$text_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			);
+
+		// column 3
+		$out .= "<div class='chimp-column'>".
+		"		<div class='chimp-padding'>".
+		"			<div class='ui-widget ui-widget-content chimp-detail'>".
+		"				<label class='ui-widget-header'>" . $this->_('Tracking options') . "</label>".
+						$detail['opens'] . $this->markupCheckbox('opens', $this->_("Track Opens")).
+						$detail['html_clicks'] . $this->markupCheckbox('html_clicks', $this->_('Track Clicks, html')).
+						$detail['text_clicks'] . $this->markupCheckbox('text_clicks', $this->_('Track Clicks, plain-text')).
+		"			</div>".
+		"		</div>".
+		"	</div>";
+
+		$out .= "</div>"; // .chimp-row
+
+		// row 2
+		$out .= "<div class='chimp-row chimp cf'>".
+			$this->markupInput('campaign_title', $value->campaign_title, $this->_("Name Your Campaign"), $this->_("Only used by MailChimp internal.")).
+			$this->markupSelect($this->lists()).
+			$this->markupInput('subject', $value->subject, $this->_("Email Subject"),  $this->_("The subject line for your campaign message")).
+			$this->markupInput('from_name', $value->from_name, $this->_("From"), $this->_("Name. (not email address)")).
+			$this->markupInput('from_email', $value->from_email, $this->_("Reply-To"), $this->_("Email address for your campaign message.")).
+			$this->markupInput('id', $value->id, $this->_("Campaign id"), $this->_("Can't be changed."), $enabled=false).
 		"</div>";
 
 		$out .=	"<input type='hidden' name='{$name}' value='{$value->id}' />\n";
 
+		// row 3
 		$out .="<p class='detail'>".
 		"	<label for='chimp-update_settings'>".
 		"		<input type='checkbox' value='1' id='chimp-update_settings' name='update_settings' />".
@@ -400,6 +525,7 @@ class MailChimpCampaign extends WireData {
 	 */
 	public function markupInput($fieldName, $fieldValue, $fieldLabel='', $fieldDescription, $enabled=true) {
 		if(empty($fieldName)) return false;
+		$name = $this->get('name');
 		$modules = wire('modules');
 		$wrapper = $modules->get('InputfieldFieldset');
 		$field = $fieldName == 'from_email' ? $modules->get('InputfieldEmail') : $modules->get('InputfieldText');
@@ -407,20 +533,17 @@ class MailChimpCampaign extends WireData {
 		if(!$enabled) $field->attr('disabled','disabled');
 		// don't give a name fort disabled campaign id field
 		$field->name = $enabled === true ? $fieldName : '';
-		// change type for email field
+		if($fieldName != 'campaign_title' && $fieldName != 'id' ) $field->attr('required', 'required');
 		$field->value = $fieldValue;
 		$field->label = $fieldLabel;
 		$field->description = $fieldDescription;
 		$field->notes = "\$page->{$this->get('name')}->{$fieldName}";
-		$wrapper->append($field);
-		$wrapper->append($field);
-				
+		// markup
 		$out = "<div class='chimp-column'>".
 		"		<div class='chimp-padding'>".
-		 			$wrapper->render().
+		 			$wrapper->append($field)->render().
 		"		</div>".
 		"	</div>";
-		
 		return $out;
 	}
 
@@ -440,18 +563,18 @@ class MailChimpCampaign extends WireData {
 		$field->label = $this->_('Mailing list');
 		$field->description = $this->_('The list to send this campaign to.');
 		$field->notes = "\$page->{$this->get('name')}->list";
+		$field->attr('required', 'required');
 		foreach($array as $option)	{
 			$attr = $value->list == $option['id'] ? array('selected' => 'selected') : null;
 			$field->addOption($option['id'], $option['name'], $attr);
 		}
-		$wrapper->append($field);
-		
+		// markup
 		$out = "<div class='chimp-column'>".
 		"		<div class='chimp-padding'>".
-		 			$wrapper->render().
+		 			$wrapper->append($field)->render().
 		"		</div>".
 		"	</div>";
-		
+
 		return $out;
 	}
 

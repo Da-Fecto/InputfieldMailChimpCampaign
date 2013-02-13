@@ -1,5 +1,9 @@
 <?php
 
+// make sure all errors get reported regardless of what ini-files might contain
+error_reporting(E_ALL | E_STRICT);
+
+
 /**
  * MailChimpCampaign Fieldtype
  *
@@ -32,8 +36,13 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 			);
 	}
 
-
-	// Return the Inputfield required by this Fieldtype
+	/**
+	 * getInputfield
+	 *
+	 * @param Page $page
+	 * @param Field $field
+	 * @return object $inputfield
+     */
 	public function getInputfield(Page $page, Field $field) {
 		$inputfield = $this->modules->get('InputfieldMailChimpCampaign');
 		$inputfield->set('frontpage', $page);
@@ -41,45 +50,47 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 	}
 
 	/**
-	 * Return all compatible Fieldtypes
+	 * getCompatibleFieldtypes returns alway null cause there are no compatible fieldtypes
 	 *
-	 *
-	 *
+	 * @return null
 	 */
-
 	public function ___getCompatibleFieldtypes(Field $field) {
 		// there are no other fieldtypes compatible with this one
 		return null;
 	}
 
-
-	// blank value is an wiredata object MailChimpCampaign
+	/**
+	 * getInputfield
+	 *
+	 * @param Page $page
+	 * @param Field $field
+	 * @return object MailChimpCampaign
+     */
 	public function getBlankValue(Page $page, Field $field) {
 		require_once(dirname(__FILE__) . '/MailChimpCampaign.php');
 		return new MailChimpCampaign();
 	}
 
 	/**
-	 * Sanitize value for runtime
+	 * tells PW there are changes
 	 *
-	 */
-
+	 * @param Page $page
+	 * @param Field $field
+	 * @return mixed $value cleaned value
+     */
 	public function sanitizeValue(Page $page, Field $field, $value) {
 		if(!$value instanceof MailChimpCampaign) {
 			$value = $this->getBlankValue($page, $field);
 		}
-
 		// report any changes to the field values
 		if($value->isChanged('id')) $page->trackChange($field->name);
 		return $value;
 	}
 
-	// reestablish any database connections that may have been lost ?????
+	// reestablish any database connections ?????
 	public function ___wakeupValue(Page $page, Field $field, $value) {
-
 		// get blank MailChimpCampaign instance
 		$data = $this->getBlankValue($page, $field);
-
 		$data->id = $value['data'];
 		$data->list = $value['list'];
 		$data->campaign_title = $value['campaign_title'];
@@ -91,7 +102,6 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 		$data->html_clicks = $value['html_clicks'];
 		$data->text_clicks = $value['text_clicks'];
 		$data->setTrackChanges(true);
-
 		return $data;
 	}
 
@@ -99,10 +109,11 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 	 * Given an 'awake' value, as set by wakeupValue, convert the value back to a basic
 	 * type for storage in DB.
 	 *
+	 * @param Page $page
+	 * @param Field $field
+	 * @return array $sleepValue array for storing in the db
 	 */
-
 	public function ___sleepValue(Page $page, Field $field, $value) {
-
 		// throw error if value is not of the right type
 		if(!$value instanceof MailChimpCampaign) {
 			throw new WireException("Expecting an instance of MailChimpCampaign");
@@ -124,17 +135,13 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 		return $sleepValue;
 	}
 
+
+
 	/**
 	 * Return the database schema in specified format. When set, these rows wil be created
 	 * in the DB table.
 	 *
 	 */
-
-//			'opens'
-//			'html_clicks'
-//			'text_clicks'
-
-
 	public function getDatabaseSchema(Field $field) {
 
 		// get the default schema

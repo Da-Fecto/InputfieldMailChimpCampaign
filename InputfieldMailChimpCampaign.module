@@ -1,5 +1,8 @@
 <?php
 
+// make sure all errors get reported regardless of what ini-files might contain
+error_reporting(E_ALL | E_STRICT);
+
 /**
  * ProcessWire Map Marker Inputfield
  *
@@ -33,6 +36,9 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 
 	protected static $defaultSettings = array(
 		'apiKey' => null,
+		'setOpens' => 1,
+		'setHtml_clicks' => 1,
+		'setText_clicks' => 1,
 		);
 
 	public function __construct() {
@@ -88,9 +94,11 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		// Set the provided API key. Beware, we still don't know if it's valid!
 		$campaign->set('apiKey', $this->apiKey);
 		$campaign->set('frontpage', $this->frontpage);
+		$campaign->set('setOpens', $this->setOpens);
+		$campaign->set('setHtml_clicks', $this->setHtml_clicks);
+		$campaign->set('setText_clicks', $this->setText_clicks);
 		$campaign->set('name', $name); // Name of the entire field
 		$campaign->set('value', $value); // All values of the field.
-
 
 		// check if we have info needed before we can create a campain
 		if( empty($value->list)) { // can't be empty if campaign is saved.
@@ -105,13 +113,14 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 				$campaign->chimpsError('1001');
 				return $out;
 			}
-			// looks like we we didn't asked the monkey to create a campaign for us, or
-			// somehow we lost the campaign id. Let's gonna create a new campaign.
+			// looks like we we didn't asked the monkey to create a campaign for us, cause 
+			// we have no list id
 			$out = $campaign->prepare();
 		 	return $out;
 		}
-
-		// check for an ID ( campain id, originated from MailChimp )
+		
+		// could be that someone deleted the campaign on mailchimp, we responded with 
+		// clearing the campain id in the db. see update method in class MailChimpCampaign
 		if(empty($value->id)) {
 			// reference the MailChimp API
 		    $api = new MCAPI($this->apiKey);
@@ -134,7 +143,6 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		 * Both the key & campaign id can still be false. Let's try to update.
 		 *
 		 */
-
 		$out = $campaign->update();
 		return $out;
 	}
@@ -170,6 +178,7 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 			if(!isset($data[$key])) $data[$key] = $value;
 		}
 
+		// apikey
 		$field = $modules->get('InputfieldText');
 		$field->attr('name', 'apiKey');
 		$field->attr('value', $data['apiKey']);
@@ -179,6 +188,44 @@ class InputfieldMailChimpCampaign extends Inputfield implements ConfigurableModu
 		$field->notes = sprintf(__("Find your %s here."),$link);
 
 		$inputfields->append($field);
+
+		// fieldset
+		$fieldset = $modules->get('InputfieldFieldset');
+		$fieldset->label = 'Set tracking defaults';
+		$fieldset->description = __('Set the the default settings for each new campaign page that is created.');
+		$fieldset->notes = __('More tracking information on ') . "[MailChimp](http://kb.mailchimp.com/article/how-do-i-track-clicks-and-opens).";
+
+		// checkbox opens
+		$name = 'setOpens';
+		$field = $modules->get('InputfieldCheckbox');
+		$field->attr('name', $name);
+		$field->attr('value', 1);
+		$field->attr('checked', $data[$name] ? 'checked' : '');
+		$field->label = 'Track Opens';
+		$field->description = 'Let MailChimp embed a tiny, invisible graphic to the bottom of your HTML email for tracking.';
+		$fieldset->append($field);
+
+		// checkbox opens
+		$name = 'setHtml_clicks';
+		$field = $modules->get('InputfieldCheckbox');
+		$field->attr('name', $name);
+		$field->attr('value', 1);
+		$field->attr('checked', $data[$name] ? 'checked' : '');
+		$field->label = __('Track Clicks');
+		$field->description = __('Let MailChimp track your clicks on html email. ( always enabled on free accounts )');
+		$fieldset->append($field);
+
+		// checkbox opens
+		$name = 'setText_clicks';
+		$field = $modules->get('InputfieldCheckbox');
+		$field->attr('name', $name);
+		$field->attr('value', 1);
+		$field->attr('checked', $data[$name] ? 'checked' : '');
+		$field->label = __('Track Plain-Text clicks');
+		$field->description = __('Let MailChimp track the clicks in plain-text email. ( always enabled on free accounts )');
+		$fieldset->append($field);
+
+		$inputfields->append($fieldset);
 
 		return $inputfields;
 
