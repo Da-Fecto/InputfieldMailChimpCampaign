@@ -3,7 +3,6 @@
 // make sure all errors get reported regardless of what ini-files might contain
 error_reporting(E_ALL | E_STRICT);
 
-
 /**
  * MailChimpCampaign Fieldtype
  *
@@ -27,7 +26,6 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 
 	public static function getModuleInfo() {
 		return array(
-
 			'title' => __('MailChimp Campaign', __FILE__), // Module Title
 			'version' => 001,
 			'author' => 'Martijn Geerts',
@@ -118,7 +116,6 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 		if(!$value instanceof MailChimpCampaign) {
 			throw new WireException("Expecting an instance of MailChimpCampaign");
 		}
-
 		$sleepValue = array(
 			'data' => $value->id,
 			'list' => $value->list,
@@ -131,11 +128,8 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 			'html_clicks' => $value->html_clicks,
 			'text_clicks' => $value->text_clicks,
 			);
-
 		return $sleepValue;
 	}
-
-
 
 	/**
 	 * Return the database schema in specified format. When set, these rows wil be created
@@ -143,10 +137,8 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 	 *
 	 */
 	public function getDatabaseSchema(Field $field) {
-
 		// get the default schema
 		$schema = parent::getDatabaseSchema($field);
-
 		$schema['data'] = "varchar(32) NOT NULL default ''"; // id
 		$schema['list'] = "varchar(32) NOT NULL default ''";
 		$schema['campaign_title'] = "varchar(255) NOT NULL default ''";
@@ -157,7 +149,6 @@ class FieldtypeMailChimpCampaign extends Fieldtype {
 		$schema['opens'] = "tinyint(1) NOT NULL default '0'";
 		$schema['html_clicks'] = "tinyint(1) NOT NULL default '0'";
 		$schema['text_clicks'] = "tinyint(1) NOT NULL default '0'";
-
 		return $schema;
 	}
 

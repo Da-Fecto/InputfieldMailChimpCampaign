@@ -121,12 +121,22 @@ class MailChimpCampaign extends WireData {
 	 * contains logic
 	 */
 	public function prepare() {
+		
 		// if the page is not published, no need contact the chimp.
 		if($this->statusUnpublished()) {
 			$this->message($this->_("The chimp can't find bananas here. Please publish the page."));
 		}
 		// return the prepare markup
 		$this->ChimpStatus = 'prepare';
+
+		// reference the this field
+		$name = $this->get('name');
+		$value = $this->get('value');
+		
+		$value->opens = $this->setOpens;
+		$value->html_clicks = $this->setHtml_clicks;
+		$value->text_clicks = $this->setText_clicks;
+				
 		return $this->markupPrepare();
 	}
 
@@ -142,7 +152,9 @@ class MailChimpCampaign extends WireData {
 		// if the page is not published, no need contact the chimp.
 		if($this->statusUnpublished()) {
 			$this->message($this->_("The chimp can't find bananas here. Please Publish the page."));
-			return $this->markupCampaign();
+			// return the prepare markup
+			$this->ChimpStatus = 'page-unpublished';
+			return $this->markupPrepare();
 		}
 
 		// wake-up the monkey
@@ -195,6 +207,7 @@ class MailChimpCampaign extends WireData {
 		// what is going on ?
 		if ($api->errorCode) {
 			// show them rotten bananas
+			$this->ChimpStatus = 'incomplete-fields';
 			$out = $this->markupPrepare();
 			// and let the monkey tell us what has happened.
 			$this->chimpsError($api->errorCode, $api->errorMessage);
@@ -203,6 +216,8 @@ class MailChimpCampaign extends WireData {
 
 		$value->id = $campaign_id;
 		$this->set($this->name, $campaign_id);
+		
+		$this->ChimpStatus = 'campaign-created';
 
 		return $this->markupCampaign();
 	}
@@ -319,10 +334,6 @@ class MailChimpCampaign extends WireData {
 	 */
 	public function markupPrepare() {
 
-		echo $this->setOpens;
-		echo $this->setHtml_clicks;
-		echo $this->setText_clicks;
-
 		// reference the this field
 		$name = $this->get('name');
 		$value = $this->get('value');
@@ -333,8 +344,22 @@ class MailChimpCampaign extends WireData {
 		if(!$this->ChimpStatus) {
 			$this->error("markupPrepare methode inside {$this->className} did not receive a ChimpStatus.");
 		}
-			
-		// campaign not found
+		
+		// not all fields are provided
+		if($this->ChimpStatus == 'incomplete-fields') {
+			$header = "<h2>" . $this->_("Don't be shy.") . "</h2>";
+			$content = "<p>" . $this->_('The chimp is waiting for data. Please fill in all fields.').
+			$img = "";
+		}		
+		
+		// if page is unpublished
+		if($this->ChimpStatus == 'page-unpublished') {
+			$header = "<h2>" . $this->_("The page is not visible for the chimp") . "</h2>";
+			$content = "<p>" . $this->_('Please fill out the form below and click publish.').
+			$img = "";
+		}
+
+		// prepare a campaign
 		if($this->ChimpStatus == 'prepare') {
 			$header = "<h2>" . $this->_("Let's setup a MailChimp campaign.") . "</h2>";
 			$content = "<p>" . $this->_('Please fill in the fields & save the page. ').
@@ -364,7 +389,7 @@ class MailChimpCampaign extends WireData {
 		$text_clicks = $this->_("Required on free accounts, optional on paid account.");
 
 		$detail = array(
-			'opens' => 		 "<span class='icon-detail'><span>every time someone opens the HTML email</span><a href='#' alt='{$opens}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
+			'opens' => "<span class='icon-detail'><span>every time someone opens the HTML email</span><a href='#' alt='{$opens}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
 			'html_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$html_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
 			'text_clicks' => "<span class='icon-detail'><span>on/off only on paid accounts</span><a href='#' alt='{$text_clicks}' class='chimp-tip'><i class='ui-icon ui-icon-info'>info</i></a></span>",
 			);
@@ -420,6 +445,13 @@ class MailChimpCampaign extends WireData {
 			$header = "<h2>" . "NO STATUS" . "</h2>";
 			$img = '';
 			$content = 'No Status';			
+		}
+
+		// campaign offline
+		if($this->ChimpStatus == 'campaign-created') {
+			$header = "<h2>" . $this->_("Your campaign is created on MailChimp") . "</h2>";
+			$img = "<img src='" . wire('config')->urls->siteModules . "Inputfield" . $this->className . "/images/freddy-updated.png' />";
+			$content = "<p>" . $this->_("The HTML is pulled in live from the url of this page. The plain-text version however, needs to be send from here. So you need to check the \"Update on MailChimp\" checkbox and press save if you want to update the plain-text version of this campaign.") . "</p>";
 		}
 		
 		// campaign offline
@@ -500,6 +532,8 @@ class MailChimpCampaign extends WireData {
 		"</div>";
 
 		$out .=	"<input type='hidden' name='{$name}' value='{$value->id}' />\n";
+
+		$out .= "<p class='detail right'>" . $this->_("plain-text only get updated when the campaign is updated to MailChimp") . "</p>";
 
 		// row 3
 		$out .="<p class='detail'>".
